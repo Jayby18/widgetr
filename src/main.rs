@@ -59,3 +59,8 @@ fn main() -> Result<(), io::Error> {
         // TODO: handle user input
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+}
