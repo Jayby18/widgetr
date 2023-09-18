@@ -54,7 +54,10 @@ fn main() -> Result<(), io::Error> {
         // TODO: get sysinfo
 
         // TODO: draw terminal
-        todo!();
+        terminal.draw(|f| {
+            let size = f.size();
+            
+        }
 
         // TODO: handle user input
     }
