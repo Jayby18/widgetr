@@ -1,5 +1,4 @@
 use std::{
-    io{self, Stdout},
     thread,
     time::{Duration, Instant},
     sync::mpsc,
@@ -15,11 +14,20 @@ use ratatui::{
     layout::{Layout, Constraint, Direction},
     style::{Color, Style},
     Terminal,
+};
+use sysinfo::SystemExt;
+
+mod widgets;
+
+enum Event<I> {
+    Input(I),
+    Tick,
 }
 
-fn main() -> Result<(), io::Error> {
+fn main() -> Result<(), std::io::Error> {
     // Set up terminal
-    let mut stdout = io::stdout();
+    enable_raw_mode()?;
+    let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -49,21 +57,47 @@ fn main() -> Result<(), io::Error> {
         }
     });
 
+    let mut sys = sysinfo::System::new_all();
+
     // Render loop
     loop {
-        // TODO: get sysinfo
+        // Refresh system info
+        sys.refresh_all();
 
-        // TODO: draw terminal
+        // Draw terminal
         terminal.draw(|f| {
             let size = f.size();
-            
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Length(3),
+                    Constraint::Min(3),
+                ])
+                .split(size);
+
+            f.render_widget(widgets::system_info(&sys), layout[0]);
+            f.render_widget(widgets::cpu_usage(&sys), layout[1]);
+            f.render_widget(widgets::ram_usage(&sys), layout[2]);
+        })?;
+
+        // Handle user event
+        match rx.recv().unwrap() {
+            Event::Input(event) => match event.code {
+                KeyCode::Char('q') => {
+                    break;
+                },
+                _ => {},
+            },
+            Event::Tick => {},
         }
-
-        // TODO: handle user input
     }
-}
 
-#[cfg(test)]
-mod test {
-    use super::*;
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    terminal.show_cursor()?;
+
+    Ok(())
 }
